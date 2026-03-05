@@ -10,8 +10,12 @@ from typing import Dict, List, Tuple, Optional
 
 import pandas as pd
 
-####### python scripts/extract_triplets_kg.py  --in stanza_out/token_level__csv.csv --exclude_sections intro --out_dir stanza_out/kg --format csv --inverb analysis/targets_top200plus200.csv
-# > python scripts/extract_triplets_kg.py  --in stanza_out/token_level__csv.csv --exclude_sections intro --out_dir stanza_out/kg2 --format csv
+"""
+usage:
+
+python scripts/extract_triplets_kg.py  --in stanza_out/token_level__csv.csv --exclude_sections intro --out_dir stanza_out/kg2 --format csv
+
+"""
 
 # ----- schema (adjust if needed) -----
 COLS = [
@@ -20,6 +24,7 @@ COLS = [
     "text", "lemma", "upos", "xpos", "feats",
     "head", "deprel", "misc"
 ]
+
 N_COLS = len(COLS)
 
 STOP_SECTIONS_DEFAULT = {"intro"}  # exclude these
