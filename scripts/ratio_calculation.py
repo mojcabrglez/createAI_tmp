@@ -2,6 +2,9 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
@@ -11,8 +14,10 @@ import csv
 pca = PCA(n_components=100)
 
 """  usage:
+python scripts/ratio_calculation.py --triplets stanza_out/kg2/edges_ext_all.csv --manual_trips triplet_codebook.tsv --out results_new/similarity_by_section_manual_triplets.tsv --model all-MiniLM-L6-v2 --save_sentences --group_by transcript_id,section --jobs interviews_by_job.tsv
 
-python scripts/ratio_calculation.py --triplets stanza_out/kg2/edges_ext_all.csv --manual_trips triplet_codebook.tsv --out results_new/similarity_by_section_by_job_triplet_level_manual_triplets.tsv --model all-MiniLM-L6-v2 --save_sentences --group_by transcript_id,section --jobs interviews_by_job.tsv
+# incl. PCA-reduction:
+# python scripts/ratio_calculation.py --triplets stanza_out/kg2/edges_ext_all.csv --manual_trips triplet_codebook.tsv --out results_new/similarities_by_section_manual_triplets_pca.tsv --model all-MiniLM-L6-v2 --save_sentences --group_by transcript_id,section --jobs interviews_by_job.tsv --pca
 
 """
 
@@ -23,7 +28,7 @@ COLS = [
     "head", "deprel", "misc"
 ]
 N_COLS = len(COLS)
-
+relevant_sections = ['basic_job_description','walkthrough','project_example','dynamic']
 
 def read_token_csv_loose(path: str) -> pd.DataFrame:
     rows = []
@@ -41,8 +46,6 @@ def read_token_csv_loose(path: str) -> pd.DataFrame:
         df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
 
     return df
-
-
 
 
 def load_jobs(filepath: str) -> pd.DataFrame:
@@ -317,6 +320,8 @@ if __name__ == "__main__":
         print(f"  Sections: {df_sentences[args.section_col].unique().tolist()}")
         # ── Embed (once, for all data) ─────────────────────────────────────────────
         df_sentences['raw_text'] = df_sentences['raw_text'].apply(lambda x: x.replace('_',''))
+        df_sentences = df_sentences[df_sentences['section'].isin(relevant_sections)].reset_index(drop=True)
+        print(f"  Sections: {df_sentences[args.section_col].unique().tolist()}")
         df_sentences = compute_triplet_embeddings(df_sentences, model_name=args.model,text_column='raw_text',do_pca=args.pca)
     else:
         print(f"Loading token-level data from {args.tokens}...")
@@ -324,6 +329,7 @@ if __name__ == "__main__":
         print(f"  Loaded {len(df_tokens)} tokens")
         df_sentences = reconstruct_sentences(df_tokens)
         print(f"  Reconstructed {len(df_sentences)} sentences")
+        df_sentences = df_sentences[df_sentences['section'].isin(relevant_sections)].reset_index(drop=True)
         print(f"  Sections: {df_sentences[args.section_col].unique().tolist()}")
         df_sentences = compute_triplet_embeddings(df_sentences, model_name=args.model, text_column='text',do_pca=args.pca)
 
@@ -497,7 +503,7 @@ if __name__ == "__main__":
     from bertopic import BERTopic
     import pandas as pd
     import numpy as np
-    import matplotlib.pyplot as plt
+
     import seaborn as sns
     from pathlib import Path
     from sklearn.metrics.pairwise import cosine_similarity
@@ -512,7 +518,7 @@ if __name__ == "__main__":
 
     all_triplets['topic_BERTopic'] = topics_pred
     all_triplets['topic_BERTopic_probs'] = probs_pred
-    # on newly formatted triplets ???
+    # on newly formatted triplets
     # topic_model_new = BERTopic()
     # trips = all_triplets['raw_text']
     # topics_new, probs_new = topic_model_new.fit_transform(trips)
@@ -622,8 +628,8 @@ if __name__ == "__main__":
             all_out_trips = Path(args.out).parent / f"all_triplet_{opt}_similarities.tsv"
 
 
-    all_triplets_copy = all_triplets.drop(columns=['embedding'])
-    if args.pca:
-        all_triplets_copy.drop(columns=['embedding_pca'], inplace=True)
-    all_triplets_copy.to_csv(all_out_trips, sep='\t')
+        all_triplets_copy = all_triplets.drop(columns=['embedding'])
+        if args.pca:
+            all_triplets_copy.drop(columns=['embedding_pca'], inplace=True)
+        all_triplets_copy.to_csv(all_out_trips, sep='\t')
 
